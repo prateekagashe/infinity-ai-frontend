@@ -4,7 +4,7 @@ import { Input, Button, Card, Typography, Spin, message, Flex, Avatar, Tooltip, 
 import ReactMarkdown from "react-markdown";
 import { CopyOutlined, UserOutlined, RobotOutlined, SendOutlined, UploadOutlined, ExpandOutlined } from "@ant-design/icons";
 import { SandpackProvider, SandpackLayout, SandpackCodeEditor, SandpackPreview, SandpackConsole } from "@codesandbox/sandpack-react";
-import {SandpackWrapper} from "./sandbox";
+import CustomSandpack from "./customeSandBox";
 import AceEditor from "react-ace";
 import "ace-builds/src-noconflict/mode-javascript";
 import "ace-builds/src-noconflict/mode-python";
@@ -12,7 +12,8 @@ import "ace-builds/src-noconflict/mode-css";
 import "ace-builds/src-noconflict/mode-html";
 import "ace-builds/src-noconflict/mode-json";
 import "ace-builds/src-noconflict/theme-monokai";
-import { githubLight } from "@codesandbox/sandpack-themes";
+import remarkGfm from "remark-gfm";
+import { Typewriter } from "react-simple-typewriter";
 
 const { Text } = Typography;
 
@@ -222,33 +223,92 @@ const ChatApp = () => {
 //   return files;
 // };
 
+  // ***************************LATEST*********************
+// const extractFilesFromResponse = (responseText) => {
+//   const filePattern = /```(js|jsx|javascript|json|css|bash)?\n([\s\S]*?)```/g;
+//   let match;
+//   const files = {};
+//   let fileIndex = 1;
+
+//   while ((match = filePattern.exec(responseText)) !== null) {
+//       console.log('Checking for file');
+//       let fileType = match[1] || "";
+//       let fileContent = match[2].trim();
+
+//       // Extract filename from comments (supports both // and /* */ styles)
+//       const filenameMatch = fileContent.match(/\/\/\s*(?:File:|src)[:\s]*(\S+)/) || 
+//                             fileContent.match(/\/\*\s*(?:File:|src)[:\s]*(\S+)\s*\*\//);
+//       console.log(filenameMatch, 'filenameMatch');
+
+//       let filePath = filenameMatch ? filenameMatch[1] : `file${fileIndex}.${fileType || "txt"}`;
+
+//       // Ensure unique file names for duplicates
+//       let originalFilePath = filePath;
+//       let count = 1;
+//       while (files[filePath]) {
+//           const extIndex = originalFilePath.lastIndexOf(".");
+//           filePath = extIndex !== -1 
+//               ? `${originalFilePath.slice(0, extIndex)}_${count}${originalFilePath.slice(extIndex)}`
+//               : `${originalFilePath}_${count}`;
+//           count++;
+//       }
+
+//       files[filePath] = { code: fileContent, active: false };
+//       fileIndex++;
+//   }
+
+//   // Make the first extracted file active
+//   if (files["/src/App.js"]) {
+//     files["/src/App.js"].active = true;
+//   }
   
+
+//   console.log("Extracted Files:", files);
+//   return files;
+// };
+
+
+
 const extractFilesFromResponse = (responseText) => {
-  const filePattern = /```(jsx|javascript|json|css|bash)?\n([\s\S]*?)```/g;
+  const filePattern = /```(js|jsx|javascript|json|css|bash)?\n([\s\S]*?)```/g;
   let match;
   const files = {};
   let fileIndex = 1;
 
   while ((match = filePattern.exec(responseText)) !== null) {
-      console.log('Checking for file');
-      let fileType = match[1] || "";
+      let fileType = match[1] || "js"; // Default to JS
       let fileContent = match[2].trim();
 
       // Extract filename from comments (supports both // and /* */ styles)
-      const filenameMatch = fileContent.match(/\/\/\s*(?:File:|src)[:\s]*(\S+)/) || 
-                            fileContent.match(/\/\*\s*(?:File:|src)[:\s]*(\S+)\s*\*\//);
-      console.log(filenameMatch, 'filenameMatch');
+      const filenameMatch = fileContent.match(/\/\/\s*(?:File:|src)[:\s]*(\S+)/) ||
+          fileContent.match(/\/\*\s*(?:File:|src)[:\s]*(\S+)\s*\*\//);
 
-      let filePath = filenameMatch ? filenameMatch[1] : `file${fileIndex}.${fileType || "txt"}`;
+      let filePath = filenameMatch
+          ? `${filenameMatch[1]}`
+          : `/src/file${fileIndex}.${fileType}`;
 
-      // Ensure unique file names for duplicates
+      // If no filename in comment, use the code block language identifier.
+      if (!filenameMatch) {
+          if (fileType === "js" || fileType === "jsx" || fileType === "javascript") {
+              filePath = `/src/file${fileIndex}.js`;
+          } else if (fileType === "css") {
+              filePath = `/src/file${fileIndex}.css`;
+          } else if (fileType === "json") {
+              filePath = `/src/file${fileIndex}.json`;
+          } else if (fileType === 'bash') {
+              filePath = `/src/file${fileIndex}.sh`;
+          }
+      }
+
+      // Ensure unique filenames in case of duplicates
       let originalFilePath = filePath;
       let count = 1;
       while (files[filePath]) {
           const extIndex = originalFilePath.lastIndexOf(".");
-          filePath = extIndex !== -1 
-              ? `${originalFilePath.slice(0, extIndex)}_${count}${originalFilePath.slice(extIndex)}`
-              : `${originalFilePath}_${count}`;
+          filePath =
+              extIndex !== -1
+                  ? `${originalFilePath.slice(0, extIndex)}_${count}${originalFilePath.slice(extIndex)}`
+                  : `${originalFilePath}_${count}`;
           count++;
       }
 
@@ -256,9 +316,9 @@ const extractFilesFromResponse = (responseText) => {
       fileIndex++;
   }
 
-  // Make the first extracted file active
-  if (Object.keys(files).length > 0) {
-      files[Object.keys(files)[0]].active = true;
+  // Ensure "/src/App.js" is set as the active file for execution
+  if (files["/src/App.js"]) {
+      files["/src/App.js"].active = true;
   }
 
   console.log("Extracted Files:", files);
@@ -266,6 +326,45 @@ const extractFilesFromResponse = (responseText) => {
 };
 
 
+// const extractFilesFromResponse = (responseText) => {
+//   const filePattern = /```(jsx|javascript|json|css|bash)?\n([\s\S]*?)```/g;
+//   let match;
+//   const files = {};
+
+//   while ((match = filePattern.exec(responseText)) !== null) {
+//       let fileType = match[1] || ""; // Extracted file type (jsx, json, etc.)
+//       let fileContent = match[2].trim(); // Extracted file content
+
+//       console.log("Match Found:");
+//       console.log("File Type:", fileType);
+//       console.log("File Content:", fileContent);
+
+//       let filePath = ""; // Determine file path based on type
+
+//       if (fileType === "jsx" || fileType === "javascript") {
+//           filePath = "/App.jsx";
+//       } else if (fileType === "json") {
+//           filePath = "/data.json";
+//       } else if (fileType === "css") {
+//           filePath = "/styles.css";
+//       } else if (fileType === "bash") {
+//           filePath = "/install.sh";
+//       } else {
+//           console.warn("Skipping unknown file type:", fileType);
+//           continue; // Ignore unrecognized blocks
+//       }
+
+//       files[filePath] = { code: fileContent, active: false };
+//   }
+
+//   // Make the first extracted file active
+//   if (Object.keys(files).length > 0) {
+//       files[Object.keys(files)[0]].active = true;
+//   }
+
+//   console.log("Extracted Files:", files);
+//   return files;
+// };
   
   const sendMessage = async (errorFlag=false) => {
     console.log('errorFlag', errorFlag)
@@ -335,7 +434,6 @@ Please:
     setSelectedImage(null);
   };
 
-
   const renderMessageContent = (content) => {
     if (!content) return null;
 
@@ -345,45 +443,105 @@ Please:
     let match;
 
     while ((match = codeBlockRegex.exec(content)) !== null) {
-      const [fullMatch, lang = "javascript", extractedCode] = match;
-      if (match.index > lastIndex) {
+        const [fullMatch, lang = "javascript", extractedCode] = match;
+
+        // Add plain text before code blocks
+        if (match.index > lastIndex) {
+            elements.push(
+                <ReactMarkdown key={`text-${lastIndex}`} remarkPlugins={[remarkGfm]}>
+                    {content.substring(lastIndex, match.index)}
+                </ReactMarkdown>
+            );
+        }
+
+        // Add extracted code block
         elements.push(
-          <ReactMarkdown key={`text-${lastIndex}`}>{content.substring(lastIndex, match.index)}</ReactMarkdown>
+            <div key={match.index} style={{ position: "relative", margin: "10px 0" }}>
+                <Tooltip title="Copy">
+                    <Button
+                        icon={<CopyOutlined />}
+                        size="small"
+                        style={{ position: "absolute", right: 5, top: 5, zIndex: 10 }}
+                        onClick={() => navigator.clipboard.writeText(extractedCode)}
+                    />
+                </Tooltip>
+                <AceEditor
+                    mode={lang || "javascript"}
+                    theme="monokai"
+                    value={extractedCode}
+                    readOnly
+                    fontSize={14}
+                    width="100%"
+                    wrapEnabled={true}
+                    setOptions={{ useWorker: false, showPrintMargin: false }}
+                />
+            </div>
         );
-      }
 
-      elements.push(
-        <div key={match.index} style={{ position: "relative", margin: "10px 0" }}>
-          <Tooltip title="Copy">
-            <Button
-              icon={<CopyOutlined />}
-              size="small"
-              style={{ position: "absolute", right: 5, top: 5, zIndex: 10 }}
-              onClick={() => navigator.clipboard.writeText(extractedCode)}
-            />
-          </Tooltip>
-          <AceEditor
-            mode={lang}
-            theme="monokai"
-            value={extractedCode}
-            readOnly
-            fontSize={14}
-            width="100%"
-            wrapEnabled={true}
-            setOptions={{ useWorker: false, showPrintMargin: false }}
-          />
-        </div>
-      );
-
-      lastIndex = match.index + fullMatch.length;
+        lastIndex = match.index + fullMatch.length;
     }
 
+    // Add remaining text after the last code block
     if (lastIndex < content.length) {
-      elements.push(<ReactMarkdown key={`text-${lastIndex}`}>{content.substring(lastIndex)}</ReactMarkdown>);
+        elements.push(
+            <ReactMarkdown key={`text-${lastIndex}`} remarkPlugins={[remarkGfm]}>
+                {content.substring(lastIndex)}
+            </ReactMarkdown>
+        );
     }
 
     return elements;
-  };
+};
+
+
+  // const renderMessageContent = (content) => {
+  //   if (!content) return null;
+
+  //   const elements = [];
+  //   const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
+  //   let lastIndex = 0;
+  //   let match;
+
+  //   while ((match = codeBlockRegex.exec(content)) !== null) {
+  //     const [fullMatch, lang = "javascript", extractedCode] = match;
+  //     if (match.index > lastIndex) {
+  //       elements.push(
+  //         <ReactMarkdown key={`text-${lastIndex}`}>{content.substring(lastIndex, match.index)}</ReactMarkdown>
+  //       );
+  //     }
+
+  //     elements.push(
+  //       <div key={match.index} style={{ position: "relative", margin: "10px 0" }}>
+  //         <Tooltip title="Copy">
+  //           <Button
+  //             icon={<CopyOutlined />}
+  //             size="small"
+  //             style={{ position: "absolute", right: 5, top: 5, zIndex: 10 }}
+  //             onClick={() => navigator.clipboard.writeText(extractedCode)}
+  //           />
+  //         </Tooltip>
+  //         <AceEditor
+  //           mode={lang}
+  //           theme="monokai"
+  //           value={extractedCode}
+  //           readOnly
+  //           fontSize={14}
+  //           width="100%"
+  //           wrapEnabled={true}
+  //           setOptions={{ useWorker: false, showPrintMargin: false }}
+  //         />
+  //       </div>
+  //     );
+
+  //     lastIndex = match.index + fullMatch.length;
+  //   }
+
+  //   if (lastIndex < content.length) {
+  //     elements.push(<ReactMarkdown key={`text-${lastIndex}`}>{content.substring(lastIndex)}</ReactMarkdown>);
+  //   }
+
+  //   return elements;
+  // };
 
   return (
     <Flex gap={4} justify="space-between" style={{ marginTop: 20 }}>
@@ -412,12 +570,24 @@ Please:
         ]}
       >
         <div style={{ maxHeight: 500, overflowY: "auto", marginBottom: 10, padding: "10px" }}>
+          {messages.length === 0 &&  
+
+       <Flex justify="center">    <Text align="center" style={{ fontSize: "1.2rem", fontWeight: "bold" }}>
+      <Typewriter
+        words={["🚀 AI to UI: Code Smarter, Build Faster!"]}
+        loop={false}
+        cursor
+        cursorStyle="_"
+        typeSpeed={60}
+        deleteSpeed={40}
+        delaySpeed={1500}
+      />
+    </Text>   </Flex>    }
           {messages.map((msg, index) => (
             <Flex key={index} align="start" style={{ marginBottom: 10, justifyContent: msg.role === "user" ? "flex-end" : "flex-start" }}>
               {msg.role === "ai" && <Avatar icon={<RobotOutlined />} style={{ marginRight: 10 }} />}
-              <Card size="small" style={{ background: msg.role === "user" ? "rgb(237 245 248)" : "#f6f6f6", maxWidth: "70%" }}>
+              <Card size="small" style={{ background: msg.role === "user" ? "rgb(237 245 248)" : "#f6f6f6", maxWidth: "70%", width: 450 }}>
                 <Text strong>{msg.role === "user" ? "You:" : "AI:"}</Text>
-                {msg.image && <img src={msg.image} alt="Uploaded" style={{ width: 100, height: 100, borderRadius: 5, marginTop: 5 }} />}
                 {msg.role === "ai" ? renderMessageContent(msg.content) : <ReactMarkdown>{msg.content}</ReactMarkdown>}
               </Card>
               {msg.role === "user" && <Avatar icon={<UserOutlined />} style={{ marginLeft: 10, background: "#f58220" }} />}
@@ -441,25 +611,9 @@ Please:
       
       </Card>
 )}
-      {/* <Card style={{ width: 500, padding: "20px" }}>
-        <Text strong>Code Execution Sandbox</Text>
-        <Sandpack key={sandpackKey} 
-       
-        // options={{ showConsole: true, showNavigator: true, showTabs: true }} 
+      {/* {codeFiles && */}
 
-        files={codeFiles}
-         customSetup={{
-          dependencies: {
-          "antd": "^5.0.0",
-          "react-markdown": "^9.0.0",
-          "@ant-design/icons": "^5.0.0",
-          "ace-builds": "^1.0.0",
-          "react-ace": "^9.5.0"
-          }}
-        }
-        />
-      </Card> */}
-      {codeFiles &&
+     
         <Card title={  
           <Flex justify="space-between" align="center">
             <Text>Code Execution Sandbox</Text>
@@ -467,11 +621,15 @@ Please:
               <Button icon={<ExpandOutlined />} onClick={toggleSandbox} />
             </Tooltip>
           </Flex>} style={{ width: isExpanded ? '100%' : '40%', padding: "20px", transition: "width 0.3s ease" }}>
-      
-          <SandpackWrapper codeFiles={codeFiles} sandpackKey={sandpackKey} sendMessage={sendMessage} setErrorMessage={setErrorMessage} />
-          {errorMessage && <div style={{ color: "red", marginTop: "10px" , overflow: 'auto'}}>⚠️ <strong>Runtime Error:</strong> {errorMessage}</div>}
+          
+          <CustomSandpack codeFiles={codeFiles} sandpackKey={sandpackKey} sendMessage={sendMessage} setErrorMessage={setErrorMessage} />
+          {/* {errorMessage && <div style={{ color: "red", marginTop: "10px" , overflow: 'auto'}}>⚠️ <strong>Runtime Error:</strong> {errorMessage}</div>} */}
         </Card>
-      }
+
+      
+
+     
+
     </Flex>
   );
 };

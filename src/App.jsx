@@ -5,7 +5,6 @@ import Navbar from "./components/navbar";
 import ChatApp from './components/chatApp';
 // import ChatApp from './components/chatCompare';
 // import ChatApp from './components/stackBlitz';
-
 const { Content } = Layout;
 
 const App = () => {
@@ -13,7 +12,7 @@ const App = () => {
     <Layout>
       <Navbar />
       <Content style={{ padding: "20px" }}>
-        {/* Your existing content here */}
+
         <ChatApp/>
       </Content>
     </Layout>
